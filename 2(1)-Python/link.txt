@@ -1,7 +1,0 @@
-2243번 https://www.acmicpc.net/source/88573954
-3080번 https://www.acmicpc.net/source/88574184 - 메모리초과
-3653번 https://www.acmicpc.net/source/88574241
-5670번 https://www.acmicpc.net/source/88418516
-10830번 https://www.acmicpc.net/source/88574383
-17408번 https://www.acmicpc.net/source/88574595
-
