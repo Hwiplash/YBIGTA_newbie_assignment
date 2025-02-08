@@ -6,14 +6,18 @@ from torchvision import datasets, transforms
 from typing import Any
 from resnet import ResNet, BasicBlock
 from config import *
+from torch.optim.lr_scheduler import StepLR
 
 NUM_CLASSES = 10  
 
 # 데이터 전처리 정의
 transform = transforms.Compose([
-    transforms.ToTensor(),  # PIL 이미지를 텐서로 변환
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # [0, 1] 범위를 [-1, 1]로 정규화
+    transforms.RandomCrop(32, padding=4),  # 무작위로 크롭하여 데이터 다양화
+    transforms.RandomHorizontalFlip(),    # 무작위로 좌우 반전
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # 정규화
 ])
+
 
 # CIFAR-10 데이터셋 로드
 train_dataset = datasets.CIFAR10(root="./data", train=True, download=True, transform=transform)
@@ -29,8 +33,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = ResNet(BasicBlock, [2, 2, 2, 2], num_classes=NUM_CLASSES).to(device)
 
 
-criterion: nn.CrossEntropyLoss = nn.CrossEntropyLoss()
-optimizer: optim.Adam = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+###
+optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)  # L2 정규화 추가
+scheduler = StepLR(optimizer, step_size=30, gamma=0.1) ##스케쥴러 생성성
 
 # 학습 
 def train(model: nn.Module, loader: DataLoader, criterion: nn.Module, optimizer: optim.Optimizer, device: torch.device) -> None:
@@ -47,6 +53,9 @@ def train(model: nn.Module, loader: DataLoader, criterion: nn.Module, optimizer:
 
         optimizer.zero_grad()
         loss.backward()
+        ##
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        ##
         optimizer.step()
 
         total_loss += loss.item()
@@ -84,7 +93,7 @@ for epoch in range(EPOCHS):
     print(f"Epoch {epoch + 1}/{EPOCHS}")
     train(model, train_loader, criterion, optimizer, device)
     evaluate(model, test_loader, criterion, device)
-
+    scheduler.step() ###
 # 모델 저장
 torch.save(model.state_dict(), "resnet18_checkpoint.pth")
 print(f"Model saved to resnet18_checkpoint.pth")
